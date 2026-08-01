@@ -1,0 +1,68 @@
+{
+  "id": "acc-default",
+  "name": "계좌 1",
+  "cash": 61751,
+  "additionalDeposit": 0,
+  "etfs": [
+    {
+      "id": "etf-1",
+      "name": "KIWOOM 국고채10년",
+      "code": "148070",
+      "avgPrice": 110648,
+      "currentPrice": 105520,
+      "qty": 116,
+      "targetRatio": 10,
+      "orderExecuted": false
+    },
+    {
+      "id": "etf-2",
+      "name": "PLUS 신흥국MSCI(합성 H)",
+      "code": "195980",
+      "avgPrice": 9795,
+      "currentPrice": 15140,
+      "qty": 2025,
+      "targetRatio": 25,
+      "orderExecuted": false
+    },
+    {
+      "id": "etf-3",
+      "name": "TIGER 단기채권액티브",
+      "code": "272580",
+      "avgPrice": 53019,
+      "currentPrice": 56775,
+      "qty": 216,
+      "targetRatio": 10,
+      "orderExecuted": false
+    },
+    {
+      "id": "etf-4",
+      "name": "TIGER 미국채10년선물",
+      "code": "305080",
+      "avgPrice": 11951,
+      "currentPrice": 13885,
+      "qty": 883,
+      "targetRatio": 10,
+      "orderExecuted": false
+    },
+    {
+      "id": "etf-5",
+      "name": "TIGER 미국S&P500",
+      "code": "360750",
+      "avgPrice": 15217,
+      "currentPrice": 27890,
+      "qty": 1099,
+      "targetRatio": 25,
+      "orderExecuted": false
+    },
+    {
+      "id": "etf-6",
+      "name": "ACE KRX금현물",
+      "code": "411060",
+      "avgPrice": 13568,
+      "currentPrice": 27120,
+      "qty": 904,
+      "targetRatio": 20,
+      "orderExecuted": false
+    }
+  ]
+}
