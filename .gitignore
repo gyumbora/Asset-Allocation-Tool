@@ -1,0 +1,12 @@
+# Python 캐시
+__pycache__/
+*.pyc
+
+# 개인 계좌 데이터 (저장소에 올리지 않음)
+accounts/*.json
+
+# OS / 편집기 파일
+Thumbs.db
+desktop.ini
+.vscode/
+.idea/
