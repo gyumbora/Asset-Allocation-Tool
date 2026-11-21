@@ -29,55 +29,50 @@ BASE_DIR = Path(__file__).resolve().parent
 ACCOUNTS_DIR = BASE_DIR / "accounts"
 INDEX_FILE = ACCOUNTS_DIR / "_index.json"
 TOOL_HTML = BASE_DIR / "tool.html"
-README_HTML = BASE_DIR / "README.html"
+README_MD = BASE_DIR / "README.md"
 
 ID_PATTERN = re.compile(r"^[A-Za-z0-9_-]+$")
 CODE_PATTERN = re.compile(r"^[0-9]{6}$")
 
-NAVER_HEADERS = {
+# 다음 금융(finance.daum.net)의 종목 시세 JSON API를 사용합니다.
+# tradePrice: 현재가(장 마감 후에는 종가), name: 종목명
+# 다음이 API를 바꾸면 이 부분만 고치면 됩니다. 실패 시 현재가 칸에 직접 입력해 주세요.
+DAUM_QUOTE_URL = "https://finance.daum.net/api/quotes/A%s"
+DAUM_HEADERS = {
     "User-Agent": (
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
         "(KHTML, like Gecko) Chrome/124.0 Safari/537.36"
     ),
+    "Accept": "application/json, text/plain, */*",
     "Accept-Language": "ko-KR,ko;q=0.9,en-US;q=0.8,en;q=0.7",
-    "Referer": "https://finance.naver.com/",
+    "Referer": "https://finance.daum.net/",
 }
-# 네이버 금융 종목 메인 페이지의 현재가/종목명 표시 영역에서 값을 추출하는 패턴입니다.
-# 네이버가 페이지 구조를 바꾸면 이 패턴이 깨질 수 있습니다 - 그런 경우 직접 입력으로 대체해주세요.
-NAVER_PRICE_RE = re.compile(r'class="today"[^>]*>.*?<span class="blind">([\d,]+)</span>', re.S)
-NAVER_NAME_RE = re.compile(r'class="h_company"[^>]*>.*?<a[^>]*>([^<]+)</a>', re.S)
 
 
-def fetch_naver_quote(code, max_retries=3, retry_delay=0.4):
+def fetch_quote(code, max_retries=3, retry_delay=0.4):
     code = (code or "").strip()
     if not CODE_PATTERN.match(code):
         raise ValueError("종목코드는 숫자 6자리여야 합니다: %r" % code)
 
-    url = "https://finance.naver.com/item/main.naver?code=%s" % code
+    url = DAUM_QUOTE_URL % code
     last_error = "알 수 없는 오류"
 
     for attempt in range(max_retries):
         try:
-            req = urllib.request.Request(url, headers=NAVER_HEADERS)
+            req = urllib.request.Request(url, headers=DAUM_HEADERS)
             with urllib.request.urlopen(req, timeout=5) as resp:
-                raw = resp.read()
+                data = json.loads(resp.read().decode("utf-8"))
 
-            try:
-                html = raw.decode("utf-8")
-            except UnicodeDecodeError:
-                html = raw.decode("euc-kr", errors="replace")
+            price = data.get("tradePrice")
+            if price is None:
+                raise ValueError("현재가 정보가 없습니다 (종목코드를 확인해 주세요).")
+            name = (data.get("name") or "").strip() or None
 
-            price_match = NAVER_PRICE_RE.search(html)
-            if not price_match:
-                raise ValueError("현재가를 찾지 못했습니다 (코드 확인 또는 페이지 구조 변경 가능성).")
-            price = int(price_match.group(1).replace(",", ""))
-
-            name_match = NAVER_NAME_RE.search(html)
-            name = name_match.group(1).strip() if name_match else None
-
-            return {"code": code, "name": name, "price": price}
+            return {"code": code, "name": name, "price": int(round(float(price)))}
+        except urllib.error.HTTPError as e:
+            last_error = "다음 금융 응답 오류 (HTTP %d)" % e.code
         except urllib.error.URLError as e:
-            last_error = "네이버 금융에 접속할 수 없습니다: %s" % e
+            last_error = "다음 금융에 접속할 수 없습니다: %s" % e
         except Exception as e:
             last_error = str(e)
 
@@ -238,11 +233,16 @@ class Handler(BaseHTTPRequestHandler):
                 return
             self._send_html(TOOL_HTML.read_text(encoding="utf-8"))
             return
-        if parsed.path in ("/readme", "/README.html"):
-            if not README_HTML.exists():
-                self._send_html("<h1>README.html을 찾을 수 없습니다.</h1>", status=404)
+        if parsed.path in ("/readme", "/README.md"):
+            if not README_MD.exists():
+                self._send_html("<h1>README.md를 찾을 수 없습니다.</h1>", status=404)
                 return
-            self._send_html(README_HTML.read_text(encoding="utf-8"))
+            body = README_MD.read_bytes()
+            self.send_response(200)
+            self.send_header("Content-Type", "text/plain; charset=utf-8")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
             return
         if parsed.path == "/api/state":
             try:
@@ -277,7 +277,7 @@ class Handler(BaseHTTPRequestHandler):
                         continue
                     seen.add(code)
                     try:
-                        results[code] = dict(ok=True, **fetch_naver_quote(code))
+                        results[code] = dict(ok=True, **fetch_quote(code))
                     except Exception as e:
                         results[code] = {"ok": False, "error": str(e)}
                 self._send_json({"ok": True, "results": results})
